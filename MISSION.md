@@ -22,19 +22,19 @@ Every system being built today optimizes for compliance, not for users. When the
 
 OpenAgeProof is an open protocol that asks: what's the minimum information needed to prove someone is an adult, and how do we deliver that without building surveillance infrastructure?
 
-The answer is a credit card.
+The answer is a payment card.
 
-Banks already do the work of verifying adulthood. Before issuing a credit card, the bank checks identity, runs credit history, validates the application against fraud databases, and confirms the applicant meets the legal age requirement. Card networks audit this process. Regulators enforce it. The infrastructure to confirm "this person is an adult" exists; it's just locked inside the banking system.
+Banks already do the work of verifying adulthood. Before issuing a credit card or an adult debit card, the bank checks identity, validates the application against fraud databases, and confirms the applicant meets the legal age requirement. Card networks audit this process. Regulators enforce it. The infrastructure to confirm "this person is an adult" exists; it's just locked inside the banking system.
 
-Holding an active credit card is a strong proxy for adulthood. The card is the credential. The protocol's job is just to confirm the user has access to one without revealing which one or who they are. The user pays a small fee to cover operational costs and receives an anonymous token that proves "this person had access to an adult-underwritten card." Nothing more.
+Holding an active adult-issued card is a strong proxy for adulthood. The card is the credential. The protocol's job is just to confirm the user has access to one without revealing which one or who they are. The user pays a small fee to cover operational costs and receives an anonymous token that proves "this person had access to an adult-underwritten card." Nothing more.
 
-The issuer doesn't know which token belongs to which card. The relying party doesn't know who you are. No record exists anywhere that connects you to the credential. This is enforced by cryptography, not policy.
+The issuer doesn't know which token belongs to which card. The issuer doesn't know who you are. The protocol is designed so the issuer cannot identify users. Even under legal compulsion, they have nothing to produce. This is enforced by cryptography, not policy.
 
 ## How it works
 
 OpenAgeProof separates the act of getting a credential from the act of using it.
 
-Once, when you first set up: you visit an OpenAgeProof issuer's website. You enter your card details and complete a small charge, a few dollars, comparable to any online purchase. The issuer produces a token and gives it to you. The token is valid for one year. You're done with the issuer until next year.
+Once, when you first set up: you visit an OpenAgeProof issuer's website. You enter your card details directly (Apple Pay, Google Pay, and other digital wallets are not supported, for technical reasons explained in the spec) and complete a small charge, a few dollars, comparable to any online purchase. The issuer produces a token and gives it to you. The token is valid for one year. You're done with the issuer until next year.
 
 You store the token. The protocol doesn't dictate how. You can save it to a password manager, write it down, keep it in a text file. Better storage and presentation tools (browser extensions, mobile apps) can be built on top of the protocol later. None exist today.
 

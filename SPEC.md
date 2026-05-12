@@ -1,10 +1,10 @@
-# OpenAgeProof Specification — Draft 0.10
+# OpenAgeProof Specification — Draft 0.15
 
 *OpenAgeProof — an open protocol for privacy-preserving age assurance.*
 
 **Status:** Draft. This document describes a protocol design that has not been implemented or audited. Do not deploy.
 
-**Changes from 0.9:** Consistency pass to align all sections with prior changes. §7 issuer requirement #1 changed from "charge" to "validate" (matches §4.1.2). §6.3 reworded — blind issuance is MUST in §4.4, so §6.3 no longer says "when used." §10.3 fingerprint enforcement language reconciled with §4.2's purge-on-expiration policy. §10.5 removed reference to unspecified blinded re-signing protocol. §10.6 inlined the README content reference. §10.10 storage description updated to include token expiration date. §11 item 1 generalized to cover both charge and zero-dollar authorization. §13 README references removed. Footer version corrected.
+**Changes from 0.14:** Consistency pass. §0 first bullet rewritten — previous "no credential-issuance record exists" overclaimed; replaced with accurate "the issuer holds no information that identifies you or your token." §0 second bullet and §1.1 last bullet generalized from "credit card" to "payment card" (per the credit + adult debit acceptance settled in v0.14). §2 issuance description generalized from "small card charge" to "card validation" to cover zero-dollar authorization. §10.8 retitled "Issuer-side absence of token information" and rewritten to reflect that the issuer never had token information rather than having it but unable to link.
 
 **Normative keywords:** The terms MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY in this document are to be interpreted as in RFC 2119.
 
@@ -22,9 +22,9 @@ OpenAgeProof is one proposal among several for privacy-preserving age assurance.
 
 OpenAgeProof's distinctive properties in this landscape are:
 
-1. **No credential-issuance record exists.** No party holds a record that associates a user's identity with the obtaining of an age assurance credential. See §10.8.
-2. **The anchor credential is rotatable.** Credit cards can be cancelled and reissued after compromise; biometrics and government IDs cannot. See §10.9.
-3. **No prior trust relationship with an identity provider is required.** A user with a credit card can obtain a token without being enrolled in any identity system.
+1. **The issuer holds no information that identifies you or your token.** The issuer's database contains only opaque card fingerprints and token expiration dates. No record links a specific token to a specific user. See §10.8.
+2. **The anchor credential is rotatable.** Payment cards can be cancelled and reissued after compromise; biometrics and government IDs cannot. See §10.9.
+3. **No prior trust relationship with an identity provider is required.** A user with an eligible payment card can obtain a token without being enrolled in any identity system.
 
 These are trade-offs, not strict improvements. OpenAgeProof's age assurance is probabilistic (card-possession correlates with adulthood) rather than cryptographic (government attestation of date of birth). Implementers should choose based on threat model rather than on a single axis.
 
@@ -46,7 +46,7 @@ OpenAgeProof is designed for contexts in which a service must verify that a user
 **In scope:**
 
 - Adult content access gates mandated by laws such as the UK Online Safety Act, France SREN Law, and equivalent US state statutes (Texas HB 1181, Utah, Louisiana, etc.).
-- Age-restricted purchases and services where jurisdictional law accepts credit card verification as a valid age assurance method.
+- Age-restricted purchases and services where jurisdictional law accepts payment card verification as a valid age assurance method.
 - Any context where a service requires evidence of adult status and would otherwise rely on invasive document upload or biometric checks.
 
 **Out of scope:**
@@ -55,15 +55,15 @@ OpenAgeProof is designed for contexts in which a service must verify that a user
 - Proof of unique personhood. A single individual with multiple cards can obtain multiple tokens.
 - Minor-exclusion mandates (Australia's under-16 social media ban, Malaysia, Indonesia, France's proposed under-15 ban). These laws require ongoing detection of minors on platforms rather than one-time verification that a user is an adult. OpenAgeProof does not address this problem and should not be cited as a solution to it.
 - Jurisdictions that require verified government identification, such as those where digital identity wallets are mandated for age verification.
-- Age thresholds other than adulthood (e.g., 13+, 16+). Credit card underwriting provides evidence of adulthood; it does not support finer-grained age thresholds.
+- Age thresholds other than adulthood (e.g., 13+, 16+). Payment card underwriting provides evidence of adulthood; it does not support finer-grained age thresholds.
 
 ### 1.2 Jurisdictional applicability
 
-The legal status of credit-card-based age assurance varies by jurisdiction. Implementers are responsible for determining whether OpenAgeProof meets local requirements. This section summarizes known compatibility as of the document date; implementers must verify current law before deployment.
+The legal status of payment-card-based age assurance varies by jurisdiction. Implementers are responsible for determining whether OpenAgeProof meets local requirements. This section summarizes known compatibility as of the document date; implementers must verify current law before deployment.
 
-**Strong fit (credit card verification is an accepted method, standalone):**
+**Strong fit (payment card verification is an accepted method, standalone):**
 
-- **United Kingdom (Online Safety Act, Ofcom guidance):** credit card checks are on Ofcom's non-exhaustive list of methods "capable of being highly effective." Debit cards are specifically not accepted. OpenAgeProof's `funding === 'credit'` requirement aligns with enforcement practice.
+- **United Kingdom (Online Safety Act, Ofcom guidance):** credit card checks are on Ofcom's non-exhaustive list of methods "capable of being highly effective." Debit cards are specifically not accepted in the UK, including adult debit cards. OpenAgeProof issuers operating under UK jurisdiction MUST restrict issuance to credit cards (and charge cards) for tokens used by UK relying parties. Other jurisdictions may accept adult debit cards (see §4.1.1).
 - **United States — states following the Texas HB 1181 model:** statutes accept "a commercially reasonable method that relies on public or private transactional data to verify the age of an individual." Card charges qualify as transactional data. See §10.10 for the data retention constraint.
 
 **Compatible as one component, not standalone:**
@@ -80,12 +80,12 @@ The legal status of credit-card-based age assurance varies by jurisdiction. Impl
 
 The OpenAgeProof flow has three phases:
 
-1. **Issuance.** The holder authorizes a small card charge through the issuer's payment processor. On successful charge, and provided the card has not previously been used with this issuer, the issuer returns a token.
+1. **Issuance.** The holder authorizes card validation (typically a small charge; see §4.1.2) through the issuer's payment processor. On successful validation, and provided the card has not previously been used with this issuer, the issuer returns a token.
 2. **Presentation.** The holder presents the token to a relying party when the RP requests age assurance.
 3. **Verification.** The relying party verifies the token locally using cached issuer public keys. The issuer is not contacted during verification. See §5.2.1 for why this is mandatory.
 
 ```
-┌────────┐  (1) charge authorization   ┌──────────┐
+┌────────┐  (1) card validation        ┌──────────┐
 │ Holder │ ─────────────────────────▶  │ Issuer   │
 │        │ ◀─────────────────────────  │          │
 │        │  (2) token                  └──────────┘
@@ -439,7 +439,23 @@ Errors returned during issuance or verification:
 
 ### 10.1 Issuer compromise
 
-An issuer whose signing key is compromised can mint arbitrary tokens. Mitigation: key rotation (§6.2) and short key validity windows. When a key is removed from the published key set, all tokens signed with it become invalid at relying parties. There is no per-token revocation (§5.3); the only revocation mechanism is key rotation.
+An issuer whose signing key is compromised can have arbitrary tokens minted by the attacker. Once a key is compromised, forged tokens cannot be cryptographically distinguished from legitimate tokens issued by the rightful holder of the key. Removing the key from the published key set does not retroactively invalidate signatures; it only affects whether RPs continue to accept tokens signed by that key.
+
+Issuers have two coherent responses to compromise, with different trade-offs:
+
+**Option A: Ride out the compromised key.** The compromised key remains in the published key set until all tokens it could have signed have expired (up to the token lifespan, typically 1 year). The issuer immediately stops using the compromised key for new issuance, rotating to a fresh key. RPs continue to accept tokens signed by the compromised key until those tokens expire naturally.
+
+- *Cost:* an attacker with the stolen key can forge valid-looking tokens for the remainder of the key's effective window (up to one token lifespan). The protocol provides no way to distinguish these forgeries from legitimate tokens.
+- *Benefit:* legitimate users are not disrupted. Their tokens continue working until natural expiration.
+- *When to use:* compromises detected late, where the damage from forged tokens is bounded by the token's natural lifespan and the friction of forcing all users to re-issue exceeds the harm from continued forgery.
+
+**Option B: Invalidate the key, re-issue free of charge.** The compromised key is removed from the published key set immediately. All tokens signed by it stop verifying at relying parties. The issuer offers free re-issuance to any card whose fingerprint is in its database (these are the legitimate users who originally paid). Affected users contact the issuer, the fingerprint is recognized, and a new token is issued without charge.
+
+- *Cost:* every legitimate user with an active token must re-issue. Users who don't notice or don't return lose the value of their original payment.
+- *Benefit:* the compromise window closes immediately. No further forged tokens can be presented at RPs.
+- *When to use:* compromises detected early, where the harm from continued forgery is significant or the issuer's reputation depends on a clean response.
+
+The choice between Options A and B is a deployment decision. Issuers SHOULD document their compromise response policy in their service documentation so users know what to expect.
 
 ### 10.2 Card data exposure
 
@@ -479,17 +495,17 @@ This is not a theoretical concern. Any standard web server logs incoming request
 
 The prohibition is also a defense against issuer compromise. An issuer whose operations are compromised by an attacker, a commercial acquirer, or a legal order cannot retroactively produce a verification log that was never generated. Data that does not exist cannot be breached, sold, or subpoenaed.
 
-### 10.8 Absence of a credential-issuance record
+### 10.8 Issuer-side absence of token information
 
 Every widely deployed age assurance system — whether based on government ID, facial biometrics, credit reference data, or accredited digital identity wallets — depends on a trusted party holding a record that associates a user's identity with the obtaining of an age assurance credential. That party may be a government agency, an accredited identity provider, a commercial identity verification vendor, or a platform operator. In every case, the record exists and is findable by anyone who can compel or breach that party.
 
 This record is an attack surface independent of the age assurance transaction itself. It is the thing that gets subpoenaed, breached, or re-used for purposes other than age assurance. It is also the thing that gets weaponized when the political environment shifts: a state that decides to police access to certain categories of content can query the credential-issuance record to identify who has ever obtained a credential to access that content.
 
-OpenAgeProof is designed so that the issuer cannot produce a `{card, token}` mapping, even under legal compulsion.
+OpenAgeProof is designed so that the issuer holds no token information after the issuance flow completes. The issuer cannot identify which token belongs to which card because it never retained the token information that would enable such identification.
 
 The issuer's database contains only the card fingerprint (opaque, not reversible to a PAN) and the token's expiration date (per §4.2). It does not contain the blinded value, the signature produced at issuance, or any reference to the unblinded `jti` that appears in tokens at relying parties. The holder generated the `jti` locally, blinded it before sending it to the issuer, and unblinded the signature on receipt. The issuer never possessed the unblinded form, and does not retain the blinded form either.
 
-A subpoena to the issuer asking "what token did this card receive?" cannot be answered. The database can confirm that a card was used to obtain a token expiring on a particular date, but cannot identify which token in the world is that card's. The expiration date is metadata about the protocol's operation; it is not user-identifying. This is enforced by cryptography, not policy.
+A subpoena to the issuer asking "what token did this card receive?" cannot be answered. The database can confirm that a card was used to obtain a token expiring on a particular date, but cannot identify which token in the world is that card's. The issuer has no token information to produce. This is enforced by cryptography, not policy.
 
 **What this property does not protect against:**
 
@@ -511,7 +527,7 @@ Age assurance systems differ significantly in post-breach recovery:
 - **Biometric-anchored systems** (facial age estimation, fingerprint-based verification): users cannot regenerate their biometrics. A leaked facial embedding permanently compromises the user's ability to use that biometric for future verification, and enables targeted spoofing of future systems that rely on the same biometric.
 - **Government-ID-anchored systems** (document upload, mobile driver's license, EUDI Wallet): users can eventually obtain new government documents, but the process is slow (weeks to months), expensive, and in some jurisdictions rare enough that most users never do so. Certain attributes (date of birth, historical addresses) cannot be rotated at all.
 - **Bank-account-anchored systems** (open banking verification): users can change banks, but account numbers are rarely rotated, and the breach exposes transaction history as well as identity.
-- **Card-anchored systems (OpenAgeProof):** users can cancel and reissue a credit card within days at no cost. The banking system is structurally designed around the assumption that card credentials are compromised periodically and must be rotatable. A new card has a new fingerprint; the user can obtain a new OpenAgeProof token with no residual exposure from the breach.
+- **Card-anchored systems (OpenAgeProof):** users can cancel and reissue a payment card within days at no cost. The banking system is structurally designed around the assumption that card credentials are compromised periodically and must be rotatable. A new card has a new fingerprint; the user can obtain a new OpenAgeProof token with no residual exposure from the breach.
 
 OpenAgeProof is the only category of age assurance system in which the anchor credential is designed for routine rotation. This is not incidental — it is a consequence of the banking system's long-standing assumption that card credentials will be compromised, which predates the internet-era concerns that drive age assurance.
 
@@ -575,4 +591,4 @@ The following design issues are unresolved in this draft:
 
 ---
 
-*End of specification draft 0.10.*
+*End of specification draft 0.15.*
